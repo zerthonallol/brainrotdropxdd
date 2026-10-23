@@ -13,7 +13,7 @@ import { getSettings } from "./owner.functions"
 import { applyCaseConfig, applyPriceOverrides, initStreamer, useLive } from "./live"
 import { play } from "./sound"
 import { rollMutation, mutatedValue, type MutationId } from "@/data/mutations"
-import { EMPTY_BP, PREMIUM_PRICE, TRACKS, canClaim, normalizeBp, type BpReward, type BpState, type StatKey, type Stats, type TrackId } from "@/data/battlepass"
+import { EMPTY_BP, LEVELS, PREMIUM_PRICE, QUESTS, canClaimLevel, canClaimQuest, normalizeBp, type BpReward, type BpState, type StatKey, type Stats, type TrackId } from "@/data/battlepass"
 
 // New players start from zero: no coins, no brainrots.
 export const START_BALANCE = 0
@@ -92,7 +92,8 @@ interface Store {
   bp: BpState
   track: (stat: StatKey, n?: number) => void
   buyPremium: () => boolean
-  claimBp: (track: TrackId, tierId: string) => BpReward | null
+  claimBp: (track: TrackId, level: number) => BpReward | null
+  claimQuest: (questId: string) => number
 }
 
 // Keep one context across hot reloads so the provider and consumers always match.
@@ -451,21 +452,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (bpRef.current.premium || balanceRef.current < PREMIUM_PRICE) return false
     balanceRef.current -= PREMIUM_PRICE
     setBalance((b) => b - PREMIUM_PRICE)
-    const next = { ...bpRef.current, premium: true, premiumBase: { ...statsRef.current } }
+    const next = { ...bpRef.current, premium: true }
     bpRef.current = next
     setBp(next)
     setTimeout(() => persistRef.current(), 300)
     return true
   }, [])
 
-  const claimBp = useCallback((trackId: TrackId, tierId: string) => {
-    if (canClaim(trackId, tierId, statsRef.current, bpRef.current) !== "ok") return null
-    const tier = TRACKS[trackId].find((t) => t.id === tierId)
-    if (!tier) return null
-    const next = { ...bpRef.current, claimed: { ...bpRef.current.claimed, [trackId]: [...bpRef.current.claimed[trackId], tierId] } }
+  const claimQuest = useCallback((questId: string) => {
+    if (canClaimQuest(questId, statsRef.current, bpRef.current) !== "ok") return 0
+    const q = QUESTS.find((x) => x.id === questId)
+    if (!q) return 0
+    const next = { ...bpRef.current, xp: bpRef.current.xp + q.xp, quests: [...bpRef.current.quests, questId] }
     bpRef.current = next
     setBp(next)
-    const r = tier.reward
+    setTimeout(() => persistRef.current(), 300)
+    return q.xp
+  }, [])
+
+  const claimBp = useCallback((trackId: TrackId, level: number) => {
+    if (canClaimLevel(trackId, level, bpRef.current) !== "ok") return null
+    const lvl = LEVELS.find((l) => l.level === level)
+    if (!lvl) return null
+    const next = { ...bpRef.current, claimed: { ...bpRef.current.claimed, [trackId]: [...bpRef.current.claimed[trackId], level] } }
+    bpRef.current = next
+    setBp(next)
+    const r = lvl[trackId]
     if (r.kind === "coins") setBalance((b) => b + r.amount)
     else if (r.kind === "case") setFreeCases((fc) => ({ ...fc, [r.caseId]: (fc[r.caseId] ?? 0) + r.amount }))
     else if (BRAINROT_BY_ID[r.id]) setInventory((inv) => [{ uid: uid(), brainrotId: r.id, obtainedAt: Date.now(), status: "owned" }, ...inv])
@@ -504,8 +516,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       track,
       buyPremium,
       claimBp,
+      claimQuest,
     }),
-    [stats, bp, track, buyPremium, claimBp, tradeItem, freeCases, consumeFreeCase, announcement, refreshSettings, priceVersion, user, inTelegram, balance, inventory, requests, cooldowns, hasTag, spend, credit, grant, removeItems, sellItem, claimCase, caseReadyAt, requestDeposit, requestWithdraw],
+    [stats, bp, track, buyPremium, claimBp, claimQuest, tradeItem, freeCases, consumeFreeCase, announcement, refreshSettings, priceVersion, user, inTelegram, balance, inventory, requests, cooldowns, hasTag, spend, credit, grant, removeItems, sellItem, claimCase, caseReadyAt, requestDeposit, requestWithdraw],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
