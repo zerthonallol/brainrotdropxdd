@@ -15,7 +15,8 @@
 - Developer gifts (coins/cases) are queued in `pending_grants` and claimed by the client store, because player state is a client-saved blob the server must not overwrite.
 - Live feed shows only real drops from `live_drops`, reported when a brainrot is granted with a source; never reintroduce fake feed items.
 - Maintenance mode (`app_settings.maintenance`) hides the app for everyone except the owner id.
-- Battle pass rules (tracks, quests, premium price) live in src/data/battlepass.ts as pure functions; progress comes from `stats` counters in the player blob, and premium quests count from a stats snapshot taken at purchase.
+- Battle pass is level-based (src/data/battlepass.ts, pure functions): quests only grant XP once, XP sets the level, each level has a free and a premium reward. Why: one place for the rules, covered by tests.
+- "Best drop in 24h" is computed server-side from `live_drops` by brainrot price (getBestDrop24h). Why: only real drops, same as the live feed.
 - Navigation is a top-left corner menu (src/routes/index.tsx), not a bottom bar; every tab must be added to TABS so it appears there.
 - Backups are versioned JSON (`app: "brainrotdrop"`) of players, promo codes, unclaimed grants and price overrides; imports are chunked and bump `state.savedAt` so the restored copy wins over device caches.
 - tsconfig keeps noUncheckedIndexedAccess/exactOptionalPropertyTypes off to match the original BrainrotDrop codebase.
