@@ -1,7 +1,8 @@
-// Battle pass: a free track and a premium track (bought for coins), each with its own quests.
-// Quest progress is computed from lifetime player stats; premium counts only from the moment it was bought.
+// Battle pass by levels: quests only give XP, XP raises the pass level,
+// and every level has a free reward plus a premium reward (premium bought for coins).
 
 export const PREMIUM_PRICE = 3000
+export const XP_PER_LEVEL = 400
 export const SEASON_NAME = "Сезон 1 · Брейнрот-лихорадка"
 
 export type StatKey =
@@ -25,69 +26,112 @@ export type BpReward =
   | { kind: "case"; caseId: string; amount: number }
   | { kind: "brainrot"; id: string }
 
-export interface BpTier {
+export interface BpQuest {
   id: string
   stat: StatKey
   target: number
-  quest: string
-  reward: BpReward
+  title: string
+  xp: number
+}
+
+export interface BpLevel {
+  level: number
+  free: BpReward
+  premium: BpReward
 }
 
 export type TrackId = "free" | "premium"
 
 export interface BpState {
   premium: boolean
-  /** Stats snapshot taken when premium was bought. */
-  premiumBase: Stats
-  claimed: Record<TrackId, string[]>
+  xp: number
+  /** Quest ids whose XP was already collected. */
+  quests: string[]
+  /** Levels whose reward was claimed, per track. */
+  claimed: Record<TrackId, number[]>
 }
 
-export const EMPTY_BP: BpState = { premium: false, premiumBase: {}, claimed: { free: [], premium: [] } }
+export const EMPTY_BP: BpState = { premium: false, xp: 0, quests: [], claimed: { free: [], premium: [] } }
 
-export const FREE_TRACK: BpTier[] = [
-  { id: "f1", stat: "cases", target: 3, quest: "Открой 3 кейса", reward: { kind: "coins", amount: 100 } },
-  { id: "f2", stat: "crash", target: 3, quest: "Сыграй 3 раунда в Crash", reward: { kind: "coins", amount: 150 } },
-  { id: "f3", stat: "upgrades", target: 2, quest: "Сделай 2 апгрейда", reward: { kind: "case", caseId: "secret", amount: 1 } },
-  { id: "f4", stat: "dice", target: 5, quest: "Брось кубик 5 раз", reward: { kind: "coins", amount: 250 } },
-  { id: "f5", stat: "brainrots", target: 5, quest: "Выбей 5 брейнротов", reward: { kind: "coins", amount: 300 } },
-  { id: "f6", stat: "bonusCases", target: 3, quest: "Открой 3 бонусных кейса", reward: { kind: "case", caseId: "lucky", amount: 1 } },
-  { id: "f7", stat: "spent", target: 2000, quest: "Потрать 2 000 монет", reward: { kind: "coins", amount: 400 } },
-  { id: "f8", stat: "crashWins", target: 3, quest: "Забери выигрыш в Crash 3 раза", reward: { kind: "coins", amount: 500 } },
-  { id: "f9", stat: "cases", target: 15, quest: "Открой 15 кейсов", reward: { kind: "case", caseId: "halloween", amount: 1 } },
-  { id: "f10", stat: "mutations", target: 1, quest: "Выбей брейнрота с мутацией", reward: { kind: "brainrot", id: "draculino" } },
+export const QUESTS: BpQuest[] = [
+  { id: "q1", stat: "cases", target: 3, title: "Открой 3 кейса", xp: 100 },
+  { id: "q2", stat: "crash", target: 3, title: "Сыграй 3 раунда в Crash", xp: 100 },
+  { id: "q3", stat: "upgrades", target: 2, title: "Сделай 2 апгрейда", xp: 100 },
+  { id: "q4", stat: "dice", target: 5, title: "Брось кубик 5 раз", xp: 100 },
+  { id: "q5", stat: "brainrots", target: 5, title: "Выбей 5 брейнротов", xp: 150 },
+  { id: "q6", stat: "bonusCases", target: 3, title: "Открой 3 бонусных кейса", xp: 150 },
+  { id: "q7", stat: "spent", target: 2000, title: "Потрать 2 000 монет", xp: 200 },
+  { id: "q8", stat: "crashWins", target: 3, title: "Забери выигрыш в Crash 3 раза", xp: 200 },
+  { id: "q9", stat: "upgradeWins", target: 3, title: "Выиграй 3 апгрейда", xp: 250 },
+  { id: "q10", stat: "diceWins", target: 5, title: "Выиграй 5 раз в Dice", xp: 250 },
+  { id: "q11", stat: "cases", target: 15, title: "Открой 15 кейсов", xp: 300 },
+  { id: "q12", stat: "mutations", target: 1, title: "Выбей брейнрота с мутацией", xp: 300 },
+  { id: "q13", stat: "paidCases", target: 10, title: "Открой 10 платных кейсов", xp: 300 },
+  { id: "q14", stat: "brainrots", target: 15, title: "Выбей 15 брейнротов", xp: 350 },
+  { id: "q15", stat: "crash", target: 25, title: "Сыграй 25 раундов в Crash", xp: 400 },
+  { id: "q16", stat: "dice", target: 25, title: "Брось кубик 25 раз", xp: 400 },
+  { id: "q17", stat: "spent", target: 5000, title: "Потрать 5 000 монет", xp: 400 },
+  { id: "q18", stat: "mutations", target: 2, title: "Выбей 2 мутации", xp: 500 },
+  { id: "q19", stat: "cases", target: 40, title: "Открой 40 кейсов", xp: 600 },
+  { id: "q20", stat: "spent", target: 15000, title: "Потрать 15 000 монет", xp: 700 },
 ]
 
-export const PREMIUM_TRACK: BpTier[] = [
-  { id: "p1", stat: "cases", target: 5, quest: "Открой 5 кейсов", reward: { kind: "coins", amount: 500 } },
-  { id: "p2", stat: "upgradeWins", target: 3, quest: "Выиграй 3 апгрейда", reward: { kind: "case", caseId: "sea", amount: 2 } },
-  { id: "p3", stat: "crash", target: 10, quest: "Сыграй 10 раундов в Crash", reward: { kind: "coins", amount: 800 } },
-  { id: "p4", stat: "diceWins", target: 5, quest: "Выиграй 5 раз в Dice", reward: { kind: "brainrot", id: "fragrama-and-chocrama" } },
-  { id: "p5", stat: "spent", target: 5000, quest: "Потрать 5 000 монет", reward: { kind: "coins", amount: 1200 } },
-  { id: "p6", stat: "paidCases", target: 10, quest: "Открой 10 платных кейсов", reward: { kind: "case", caseId: "crystal", amount: 2 } },
-  { id: "p7", stat: "brainrots", target: 15, quest: "Выбей 15 брейнротов", reward: { kind: "coins", amount: 1500 } },
-  { id: "p8", stat: "mutations", target: 2, quest: "Выбей 2 мутации", reward: { kind: "brainrot", id: "digi-narwhal" } },
-  { id: "p9", stat: "spent", target: 15000, quest: "Потрать 15 000 монет", reward: { kind: "case", caseId: "og", amount: 1 } },
-  { id: "p10", stat: "cases", target: 40, quest: "Открой 40 кейсов", reward: { kind: "brainrot", id: "skibidi-toilet" } },
+const coins = (amount: number): BpReward => ({ kind: "coins", amount })
+const kase = (caseId: string, amount = 1): BpReward => ({ kind: "case", caseId, amount })
+const rot = (id: string): BpReward => ({ kind: "brainrot", id })
+
+export const LEVELS: BpLevel[] = [
+  { level: 1, free: coins(100), premium: coins(400) },
+  { level: 2, free: coins(150), premium: kase("secret") },
+  { level: 3, free: kase("secret"), premium: coins(600) },
+  { level: 4, free: coins(200), premium: kase("sea", 2) },
+  { level: 5, free: kase("lucky"), premium: rot("fragrama-and-chocrama") },
+  { level: 6, free: coins(250), premium: coins(800) },
+  { level: 7, free: coins(300), premium: kase("crystal") },
+  { level: 8, free: kase("halloween"), premium: coins(1000) },
+  { level: 9, free: coins(350), premium: kase("crystal", 2) },
+  { level: 10, free: rot("draculino"), premium: rot("digi-narwhal") },
+  { level: 11, free: coins(400), premium: coins(1200) },
+  { level: 12, free: kase("lucky"), premium: kase("og") },
+  { level: 13, free: coins(500), premium: coins(1500) },
+  { level: 14, free: kase("halloween", 2), premium: kase("og", 2) },
+  { level: 15, free: coins(1000), premium: rot("skibidi-toilet") },
 ]
 
-export const TRACKS: Record<TrackId, BpTier[]> = { free: FREE_TRACK, premium: PREMIUM_TRACK }
+export const MAX_LEVEL = LEVELS.length
 
-/** Progress of one quest. Premium quests count only what happened after the pass was bought. */
-export function tierProgress(track: TrackId, tier: BpTier, stats: Stats, bp: BpState) {
-  const total = stats[tier.stat] ?? 0
-  const base = track === "premium" ? (bp.premiumBase[tier.stat] ?? 0) : 0
-  const value = track === "premium" && !bp.premium ? 0 : Math.max(0, total - base)
-  return { value: Math.min(value, tier.target), done: value >= tier.target }
+/** Level reached with the given XP (0 = none yet), capped at the last level. */
+export function levelFromXp(xp: number) {
+  return Math.min(MAX_LEVEL, Math.floor(Math.max(0, xp) / XP_PER_LEVEL))
 }
 
-export type ClaimCheck = "ok" | "locked" | "not-done" | "claimed" | "unknown"
+/** XP inside the current level, for the progress bar. */
+export function xpIntoLevel(xp: number) {
+  if (levelFromXp(xp) >= MAX_LEVEL) return XP_PER_LEVEL
+  return Math.max(0, xp) % XP_PER_LEVEL
+}
 
-export function canClaim(track: TrackId, tierId: string, stats: Stats, bp: BpState): ClaimCheck {
-  const tier = TRACKS[track].find((t) => t.id === tierId)
-  if (!tier) return "unknown"
+export function questProgress(q: BpQuest, stats: Stats) {
+  const value = stats[q.stat] ?? 0
+  return { value: Math.min(value, q.target), done: value >= q.target }
+}
+
+export type QuestCheck = "ok" | "not-done" | "claimed" | "unknown"
+
+export function canClaimQuest(questId: string, stats: Stats, bp: BpState): QuestCheck {
+  const q = QUESTS.find((x) => x.id === questId)
+  if (!q) return "unknown"
+  if (bp.quests.includes(questId)) return "claimed"
+  return questProgress(q, stats).done ? "ok" : "not-done"
+}
+
+export type ClaimCheck = "ok" | "locked" | "not-reached" | "claimed" | "unknown"
+
+export function canClaimLevel(track: TrackId, level: number, bp: BpState): ClaimCheck {
+  if (!LEVELS.some((l) => l.level === level)) return "unknown"
   if (track === "premium" && !bp.premium) return "locked"
-  if (bp.claimed[track].includes(tierId)) return "claimed"
-  return tierProgress(track, tier, stats, bp).done ? "ok" : "not-done"
+  if (bp.claimed[track].includes(level)) return "claimed"
+  return levelFromXp(bp.xp) >= level ? "ok" : "not-reached"
 }
 
 export function canBuyPremium(balance: number, bp: BpState) {
@@ -96,12 +140,11 @@ export function canBuyPremium(balance: number, bp: BpState) {
 
 export function normalizeBp(raw: unknown): BpState {
   const r = (raw ?? {}) as Partial<BpState>
+  const nums = (a: unknown) => (Array.isArray(a) ? a.filter((x): x is number => typeof x === "number") : [])
   return {
     premium: Boolean(r.premium),
-    premiumBase: r.premiumBase && typeof r.premiumBase === "object" ? r.premiumBase : {},
-    claimed: {
-      free: Array.isArray(r.claimed?.free) ? r.claimed.free : [],
-      premium: Array.isArray(r.claimed?.premium) ? r.claimed.premium : [],
-    },
+    xp: typeof r.xp === "number" && r.xp > 0 ? r.xp : 0,
+    quests: Array.isArray(r.quests) ? r.quests.filter((x): x is string => typeof x === "string") : [],
+    claimed: { free: nums(r.claimed?.free), premium: nums(r.claimed?.premium) },
   }
 }
