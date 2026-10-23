@@ -502,3 +502,57 @@ body {
 
 .bd-mutated { animation: bd-mut-glow 2.4s ease-in-out infinite; }
 @keyframes bd-mut-glow { 50% { box-shadow: 0 0 18px -2px rgba(255,255,255,.35); } }
+
+/* ---- Battle pass levels ---- */
+.bd-bp-badge {
+  display: grid; place-items: center; align-content: center; width: 4rem; height: 4rem; flex-shrink: 0; border-radius: 1.1rem;
+  color: #160b2e; background: linear-gradient(160deg, #e6ff9a, var(--bd-lime));
+  box-shadow: 0 4px 0 #5f8c12, 0 0 28px -6px rgba(182, 255, 59, 0.7);
+}
+.bd-bp-progress-lg { height: 10px; }
+.bd-bp-node {
+  display: grid; place-items: center; border-radius: 0.8rem; font-family: var(--font-heading); font-weight: 800; font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.45); background: rgba(0, 0, 0, 0.35); border: 1px solid var(--bd-line);
+}
+.bd-bp-node[data-reached="true"] {
+  color: #160b2e; background: var(--bd-lime); border-color: transparent; box-shadow: 0 0 16px -4px rgba(182, 255, 59, 0.7);
+}
+.bd-bp-cell {
+  --track: var(--bd-lime);
+  display: flex; align-items: center; gap: 0.5rem; min-width: 0; padding: 0.45rem; border-radius: 1rem;
+  background: linear-gradient(180deg, var(--bd-panel-2), var(--bd-panel)); border: 1px solid var(--bd-line);
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+}
+.bd-bp-cell[data-track="premium"] { --track: var(--bd-gold); flex-direction: row-reverse; }
+.bd-bp-cell[data-track="premium"] > span:last-child { text-align: right; }
+.bd-bp-cell[data-track="premium"] > span:last-child > span:last-child { justify-content: flex-end; }
+.bd-bp-cell[data-state="ok"] {
+  cursor: pointer; border-color: color-mix(in oklab, var(--track) 70%, transparent);
+  box-shadow: 0 0 22px -6px var(--track); animation: bd-bp-pulse 1.8s ease-in-out infinite;
+}
+.bd-bp-cell[data-state="ok"]:active { transform: scale(0.97); }
+.bd-bp-cell[data-state="claimed"] { opacity: 0.5; }
+.bd-bp-cell[data-state="locked"], .bd-bp-cell[data-state="not-reached"] { filter: saturate(0.6); }
+.bd-bp-cell .bd-bp-reward { width: 2.75rem; height: 2.75rem; }
+@keyframes bd-bp-pulse { 50% { box-shadow: 0 0 30px -4px var(--track); } }
+.bd-xp-chip {
+  display: inline-flex; align-items: center; gap: 0.15rem; border-radius: 0.5rem; padding: 0.2rem 0.45rem;
+  font-size: 10px; font-weight: 800; color: var(--bd-lime);
+  background: color-mix(in oklab, var(--bd-lime) 14%, transparent); border: 1px solid color-mix(in oklab, var(--bd-lime) 40%, transparent);
+}
+
+/* ---- Best drop of 24h ---- */
+.bd-best-drop {
+  position: relative; overflow: hidden; display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--bd-line);
+  background:
+    radial-gradient(60% 140% at 0% 50%, var(--glow), transparent 70%),
+    linear-gradient(90deg, rgba(255, 200, 61, 0.14), rgba(0, 0, 0, 0.25));
+}
+.bd-best-drop::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.12) 50%, transparent 65%);
+  background-size: 250% 100%; animation: bd-best-shine 3.5s linear infinite;
+}
+@keyframes bd-best-shine { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .bd-best-drop::after, .bd-bp-cell[data-state="ok"] { animation: none; } }
