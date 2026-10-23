@@ -5,7 +5,7 @@ import { OwnerView } from '@/components/casino/OwnerView'
 import { isOwner } from '@/lib/tg-auth'
 import { setStreamer, useLive } from '@/lib/live'
 import { BRAINROT_BY_ID, TIER_META } from '@/data/brainrots'
-import { getLiveDrops } from '@/lib/player.functions'
+import { getBestDrop24h, getLiveDrops } from '@/lib/player.functions'
 import { getMaintenance } from '@/lib/owner.functions'
 import { Wrench } from 'lucide-react'
 
@@ -20,7 +20,7 @@ import { CrashView } from '@/components/casino/CrashView'
 import { ProfileView } from '@/components/casino/ProfileView'
 import { BattlePassView } from '@/components/casino/BattlePassView'
 import { itemValue } from '@/lib/store'
-import { TRACKS, tierProgress } from '@/data/battlepass'
+import { LEVELS, QUESTS, canClaimLevel, levelFromXp, questProgress } from '@/data/battlepass'
 import { BrainrotImg, Coin, CoinAmount, IncomeTag, cdnImage } from '@/components/casino/ui'
 
 export const Route = createFileRoute('/')({
@@ -93,6 +93,7 @@ function Shell() {
       )}
       <Header onDeposit={() => go('profile')} onMenu={() => { haptic(); setMenuOpen(true) }} />
       <UpdateBanner />
+      <BestDrop24h />
       <LiveFeed />
       <main className="mx-auto max-w-xl px-4 pt-4">
         {tab === 'cases' && <Hero onPlay={() => go('upgrade')} />}
@@ -314,16 +315,15 @@ function CornerMenu({
 
 function BattlePassPromo({ onOpen }: { onOpen: () => void }) {
   const { stats, bp } = useStore()
-  const ready = (['free', 'premium'] as const).reduce(
-    (n, t) => n + TRACKS[t].filter((x) => !bp.claimed[t].includes(x.id) && tierProgress(t, x, stats, bp).done && (t === 'free' || bp.premium)).length,
-    0,
-  )
+  const ready =
+    QUESTS.filter((q) => !bp.quests.includes(q.id) && questProgress(q, stats).done).length +
+    LEVELS.reduce((n, l) => n + (['free', 'premium'] as const).filter((t) => canClaimLevel(t, l.level, bp) === 'ok').length, 0)
   return (
     <button type="button" onClick={onOpen} className="bd-bp-hero mt-4 flex w-full items-center gap-3 !p-3 text-left">
       <img src="/img/battlepass.webp" alt="" className="size-14 shrink-0 object-contain" loading="lazy" />
       <span className="min-w-0 flex-1">
         <span className="block font-heading text-sm font-extrabold">Батл пасс</span>
-        <span className="block text-[11px] text-white/60">Бесплатная и премиум дорожки с квестами</span>
+        <span className="block text-[11px] text-white/60">{`Уровень ${levelFromXp(bp.xp)} · квесты дают XP`}</span>
       </span>
       {ready > 0 ? (
         <span className="shrink-0 rounded-lg bg-[var(--bd-gold)] px-2 py-1 text-[10px] font-extrabold text-black">Забрать: {ready}</span>
@@ -331,6 +331,41 @@ function BattlePassPromo({ onOpen }: { onOpen: () => void }) {
         <ChevronRight className="size-5 shrink-0 text-white/50" />
       )}
     </button>
+  )
+}
+
+// Most valuable real drop of the last 24 hours, shown above the live feed.
+function BestDrop24h() {
+  const [best, setBest] = useState<Awaited<ReturnType<typeof getBestDrop24h>> | undefined>(undefined)
+  useEffect(() => {
+    let stop = false
+    const pull = () =>
+      getBestDrop24h()
+        .then((d) => !stop && setBest(d))
+        .catch(() => !stop && setBest((x) => x ?? null))
+    pull()
+    const t = setInterval(pull, 30000)
+    return () => {
+      stop = true
+      clearInterval(t)
+    }
+  }, [])
+  const b = best ? BRAINROT_BY_ID[best.brainrotId] : undefined
+  if (!best || !b) return null
+  return (
+    <div className="bd-best-drop" style={{ ['--glow' as string]: TIER_META[b.tier].glow }}>
+      <BrainrotImg b={b} size={46} />
+      <div className="relative min-w-0 flex-1 leading-tight">
+        <div className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-[var(--bd-gold)]">
+          <Crown className="size-3" /> Лучший дроп за 24 часа
+        </div>
+        <div className="truncate font-heading text-sm font-extrabold">{b.name}</div>
+        <div className="truncate text-[10px] text-white/55">
+          {best.user} · {best.source}
+        </div>
+      </div>
+      <CoinAmount amount={best.price} />
+    </div>
   )
 }
 

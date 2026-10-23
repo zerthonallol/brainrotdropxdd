@@ -81,6 +81,26 @@ export const getLiveDrops = createServerFn({ method: "GET" }).handler(async () =
   return (data ?? []).map((r) => ({ key: String(r.id), user: r.user_name, brainrotId: r.brainrot_id, source: r.source }))
 })
 
+/** Most valuable real drop in the last 24 hours (by brainrot coin price). */
+export const getBestDrop24h = createServerFn({ method: "GET" }).handler(async () => {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server")
+  const { BRAINROT_BY_ID } = await import("@/data/brainrots")
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const { data } = await supabaseAdmin
+    .from("live_drops")
+    .select("id, user_name, brainrot_id, source, created_at")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(1000)
+  let best: { key: string; user: string; brainrotId: string; source: string; at: string; price: number } | null = null
+  for (const r of data ?? []) {
+    const price = BRAINROT_BY_ID[r.brainrot_id]?.price ?? 0
+    if (price > 0 && (!best || price > best.price))
+      best = { key: String(r.id), user: r.user_name, brainrotId: r.brainrot_id, source: r.source, at: r.created_at, price }
+  }
+  return best
+})
+
 /** Player sends a deposit/withdraw request; the owner gets a Telegram DM and sees it in the admin panel. */
 export const submitRequest = createServerFn({ method: "POST" })
   .inputValidator((d) =>
