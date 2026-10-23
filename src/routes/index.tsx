@@ -364,7 +364,7 @@ function BestDrop24h() {
           {best.user} · {best.source}
         </div>
       </div>
-      <CoinAmount amount={best.price} />
+      <CoinAmount value={best.price} className="relative shrink-0 text-sm" />
     </div>
   )
 }
